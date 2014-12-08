@@ -76,9 +76,13 @@ makes possible to update kill ring only when content of clipboard changes.")
   (concat nclip-server "?" nclip-auth-token))
 
 (defun nclip--set-selection (data)
-  (let ((url-request-method "POST")
-        (url-request-data data))
-    (url-retrieve (nclip--build-url) 'nclip--noop)))
+  (run-with-idle-timer
+   0.5 nil
+   (lambda (data)
+     (let ((url-request-method "POST")
+           (url-request-data data))
+       (url-retrieve (nclip--build-url) 'nclip--noop)))
+   data))
 
 (defun nclip--get-selection ()
   (with-temp-buffer
