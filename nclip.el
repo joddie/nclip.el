@@ -70,6 +70,9 @@
 It seems that it contains some metadata about killed item so this variable
 makes possible to update kill ring only when content of clipboard changes.")
 
+(defvar url-http-response-status)       ; in url-http.el
+(defconst nclip-timeout 3
+  "Time to wait in seconds before giving up on NClip connection.")
 (defun nclip--noop (status) nil)
 
 (defun nclip--build-url ()
@@ -103,11 +106,28 @@ makes possible to update kill ring only when content of clipboard changes.")
      (t
       (setq nclip--last-selection clip-text)))))
 
+(defun nclip-server-available-p ()
+  "Return non-nil if an NClip server seems to be available.
+
+Returns non-nil if connecting to `nclip-server' succeeds within
+the time limit specified by `nclip-timeout'.  Returns nil if the
+connection fails or times out."
+  (with-timeout
+      (nclip-timeout nil)
+    (with-current-buffer
+        (url-retrieve-synchronously (nclip--build-url))
+      (and (boundp 'url-http-response-status)
+           (equal url-http-response-status 200)))))
+
 ;;;###autoload
 (defun turn-on-nclip ()
   (interactive)
-  (setq interprogram-cut-function 'nclip-cut)
-  (setq interprogram-paste-function 'nclip-paste))
+  (if (nclip-server-available-p)
+      (progn
+        (setq interprogram-cut-function 'nclip-cut)
+        (setq interprogram-paste-function 'nclip-paste)
+        (message "NClip enabled."))
+    (message "NClip connection failed: check ports and `nclip-auth-token'.")))
 
 (defun turn-off-nclip ()
   (interactive)
